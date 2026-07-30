@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sourcing &amp; Procurement AI Agent — SAP S/4HANA</title>
+  <style>
+    /* ── Reset & base ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sap-blue:      #0070f2;
+      --sap-blue-dark: #0054b3;
+      --sap-shell:     #354a5e;
+      --sap-bg:        #f5f6f7;
+      --sap-white:     #ffffff;
+      --sap-border:    #d9d9d9;
+      --sap-text:      #32363a;
+      --sap-muted:     #6a6d70;
+      --sap-success:   #107e3e;
+      --sap-warning:   #e9730c;
+      --sap-error:     #bb0000;
+      --sap-tool-bg:   #eaf3ff;
+      --radius:        8px;
+      --shadow:        0 2px 12px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: "72", "72full", Arial, Helvetica, sans-serif;
+      background: var(--sap-bg);
+      color: var(--sap-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Shell header ──────────────────────────────────────────────── */
+    header {
+      background: var(--sap-shell);
+      color: #fff;
+      padding: 0 24px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: .3px;
+      flex-shrink: 0;
+    }
+
+    header .app-id {
+      font-size: 11px;
+      font-weight: 400;
+      opacity: .65;
+      margin-left: 4px;
+    }
+
+    header .logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    header .divider { opacity: .3; }
+
+    /* ── Page layout ───────────────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+      padding: 24px;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Card ──────────────────────────────────────────────────────── */
+    .card {
+      background: var(--sap-white);
+      border: 1px solid var(--sap-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .card h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--sap-shell);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--sap-blue);
+    }
+
+    /* ── Form ──────────────────────────────────────────────────────── */
+    .form-row { margin-bottom: 18px; }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sap-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--sap-border);
+      border-radius: 4px;
+      font-size: 14px;
+      color: var(--sap-text);
+      background: var(--sap-white);
+      transition: border-color .15s;
+      outline: none;
+    }
+
+    input[type="text"]:focus { border-color: var(--sap-blue); box-shadow: 0 0 0 3px rgba(0,112,242,.12); }
+    input[type="text"]::placeholder { color: #b0b3b8; }
+
+    .hint {
+      font-size: 11px;
+      color: var(--sap-muted);
+      margin-top: 4px;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background .15s, opacity .15s;
+    }
+
+    .btn-primary {
+      background: var(--sap-blue);
+      color: #fff;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-primary:hover { background: var(--sap-blue-dark); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--sap-blue);
+      border: 1px solid var(--sap-blue);
+      font-size: 12px;
+      padding: 6px 14px;
+    }
+
+    .btn-secondary:hover { background: var(--sap-tool-bg); }
+
+    /* ── Weights sliders ───────────────────────────────────────────── */
+    .weights-section { margin-top: 24px; }
+    .weights-section h3 { font-size: 13px; font-weight: 600; color: var(--sap-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 14px; }
+
+    .weight-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .weight-label { font-size: 12px; width: 90px; flex-shrink: 0; }
+    input[type="range"] { flex: 1; accent-color: var(--sap-blue); cursor: pointer; }
+    .weight-val { font-size: 12px; font-weight: 700; width: 36px; text-align: right; color: var(--sap-blue); }
+
+    .weight-warning {
+      font-size: 11px;
+      color: var(--sap-warning);
+      display: none;
+      margin-top: 4px;
+    }
+
+    /* ── Results pane ──────────────────────────────────────────────── */
+    .results-pane { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Status bar ────────────────────────────────────────────────── */
+    #status-bar {
+      display: none;
+      background: var(--sap-tool-bg);
+      border: 1px solid #c0d9f5;
+      border-radius: var(--radius);
+      padding: 12px 16px;
+    }
+
+    .status-inner { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 3px solid #c0d9f5;
+      border-top-color: var(--sap-blue);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tool log ──────────────────────────────────────────────────── */
+    #tool-log {
+      display: none;
+    }
+
+    #tool-log h3 { font-size: 12px; font-weight: 600; color: var(--sap-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px; }
+
+    #tool-entries {
+      font-size: 11.5px;
+      font-family: "Courier New", monospace;
+      color: var(--sap-muted);
+      line-height: 1.8;
+      max-height: 140px;
+      overflow-y: auto;
+      background: #fafafa;
+      border: 1px solid var(--sap-border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+
+    .tool-entry::before { content: "▶ "; color: var(--sap-blue); }
+
+    /* ── Result output ─────────────────────────────────────────────── */
+    #result-box { display: none; }
+
+    #result-box h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--sap-success);
+      text-transform: uppercase;
+      letter-spacing: .4px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #result-box h3::before { content: "✔"; }
+
+    #result-content {
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--sap-text);
+    }
+
+    /* Markdown-rendered elements inside result */
+    #result-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0;
+      font-size: 13px;
+    }
+
+    #result-content th {
+      background: var(--sap-shell);
+      color: #fff;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    #result-content td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--sap-border);
+    }
+
+    #result-content tr:nth-child(even) td { background: #f9fafb; }
+    #result-content tr:hover td { background: var(--sap-tool-bg); }
+
+    #result-content h2, #result-content h3, #result-content h4 {
+      margin: 16px 0 6px;
+      color: var(--sap-shell);
+    }
+
+    #result-content strong { color: var(--sap-shell); }
+
+    #result-content ul, #result-content ol {
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+
+    #result-content li { margin-bottom: 4px; }
+
+    #result-content code {
+      background: #f0f3f5;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: "Courier New", monospace;
+    }
+
+    #result-content blockquote {
+      border-left: 3px solid var(--sap-blue);
+      padding-left: 12px;
+      color: var(--sap-muted);
+      margin: 8px 0;
+    }
+
+    /* ── Error box ─────────────────────────────────────────────────── */
+    #error-box {
+      display: none;
+      background: #fff5f5;
+      border: 1px solid #f5c2c2;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      color: var(--sap-error);
+      font-size: 13px;
+    }
+
+    /* ── Welcome placeholder ───────────────────────────────────────── */
+    #welcome {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--sap-muted);
+    }
+
+    #welcome .icon { font-size: 48px; margin-bottom: 16px; }
+    #welcome h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--sap-shell); }
+    #welcome p { font-size: 13px; line-height: 1.6; max-width: 380px; margin: 0 auto; }
+
+    /* ── Footer ────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--sap-muted);
+      padding: 12px;
+      border-top: 1px solid var(--sap-border);
+      background: var(--sap-white);
+    }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 800px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Shell header -->
+<header>
+  <span class="logo">SAP</span>
+  <span class="divider">|</span>
+  <span>Process Purchase Requisitions V2 <span class="app-id">F1048A</span></span>
+  <span style="margin-left:auto;font-size:12px;opacity:.7;">AI Sourcing Advisor</span>
+</header>
+
+<main>
+
+  <!-- ── Left panel: input form ── -->
+  <aside>
+    <div class="card">
+      <h2>Analyse Purchase Requisition</h2>
+
+      <form id="analyse-form">
+
+        <div class="form-row">
+          <label for="pr_number">Purchase Requisition No.</label>
+          <input type="text" id="pr_number" name="pr_number"
+                 placeholder="e.g. 0010000042" required autocomplete="off" />
+          <p class="hint">Enter the PR number from the F1048A worklist</p>
+        </div>
+
+        <div class="form-row">
+          <label for="purchasing_org">Purchasing Organisation</label>
+          <input type="text" id="purchasing_org" name="purchasing_org"
+                 placeholder="e.g. 1010" value="1010" />
+        </div>
+
+        <!-- Scoring weights -->
+        <div class="weights-section">
+          <h3>Scoring Weights</h3>
+
+          <div class="weight-row">
+            <span class="weight-label">Price</span>
+            <input type="range" id="w-price" min="0" max="100" value="35" step="5" />
+            <span class="weight-val" id="lbl-price">35%</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">Delivery</span>
+            <input type="range" id="w-delivery" min="0" max="100" value="30" step="5" />
+            <span class="weight-val" id="lbl-delivery">30%</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">Evaluation</span>
+            <input type="range" id="w-eval" min="0" max="100" value="35" step="5" />
+            <span class="weight-val" id="lbl-eval">35%</span>
+          </div>
+          <p class="weight-warning" id="weight-warn">⚠ Weights must sum to 100%</p>
+        </div>
+
+        <br/>
+        <button type="submit" class="btn btn-primary" id="submit-btn">
+          <span id="btn-icon">🔍</span>
+          <span id="btn-text">Analyse &amp; Recommend</span>
+        </button>
+
+      </form>
+
+      <!-- Quick demo -->
+      <div style="margin-top:16px;text-align:center;">
+        <button class="btn btn-secondary" onclick="loadDemo()">Load demo PR (mock data)</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Right panel: results ── -->
+  <section class="results-pane card">
+
+    <!-- Welcome state -->
+    <div id="welcome">
+      <div class="icon">📋</div>
+      <h3>Sourcing & Procurement AI Agent</h3>
+      <p>Enter a Purchase Requisition number on the left to get an AI-powered
+         supplier recommendation based on sources of supply, historical PO data,
+         and SAP supplier evaluation scores.</p>
+    </div>
+
+    <!-- Status bar (visible while running) -->
+    <div id="status-bar">
+      <div class="status-inner">
+        <div class="spinner"></div>
+        <span id="status-text">Initialising…</span>
+      </div>
+    </div>
+
+    <!-- Tool call log -->
+    <div id="tool-log" class="card" style="padding:14px;">
+      <h3>Agent Activity</h3>
+      <div id="tool-entries"></div>
+    </div>
+
+    <!-- Final recommendation -->
+    <div id="result-box" class="card" style="padding:20px;">
+      <h3>Recommendation</h3>
+      <div id="result-content"></div>
+    </div>
+
+    <!-- Error -->
+    <div id="error-box"></div>
+
+  </section>
+</main>
+
+<footer>
+  SAP S/4HANA Private Cloud &nbsp;·&nbsp; Sourcing &amp; Procurement AI Agent &nbsp;·&nbsp; F1048A
+</footer>
+
+<!-- ── Marked.js for markdown rendering ── -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+  /* ── Weight sliders ──────────────────────────────────────────────── */
+  const sliders = {
+    price:    document.getElementById('w-price'),
+    delivery: document.getElementById('w-delivery'),
+    eval:     document.getElementById('w-eval'),
+  };
+  const labels = {
+    price:    document.getElementById('lbl-price'),
+    delivery: document.getElementById('lbl-delivery'),
+    eval:     document.getElementById('lbl-eval'),
+  };
+
+  function updateWeightLabels() {
+    Object.keys(sliders).forEach(k => {
+      labels[k].textContent = sliders[k].value + '%';
+    });
+    const sum = +sliders.price.value + +sliders.delivery.value + +sliders.eval.value;
+    const warn = document.getElementById('weight-warn');
+    warn.style.display = sum !== 100 ? 'block' : 'none';
+  }
+
+  Object.values(sliders).forEach(s => s.addEventListener('input', updateWeightLabels));
+
+  /* ── Demo loader ─────────────────────────────────────────────────── */
+  function loadDemo() {
+    document.getElementById('pr_number').value = '0010000042';
+    document.getElementById('purchasing_org').value = '1010';
+  }
+
+  /* ── UI state helpers ────────────────────────────────────────────── */
+  function show(id) { document.getElementById(id).style.display = 'block'; }
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+  function resetUI() {
+    hide('status-bar');
+    hide('tool-log');
+    hide('result-box');
+    hide('error-box');
+    hide('welcome');
+    document.getElementById('tool-entries').innerHTML = '';
+    document.getElementById('result-content').innerHTML = '';
+    document.getElementById('error-box').textContent = '';
+  }
+
+  function setStatus(text) {
+    document.getElementById('status-text').textContent = text;
+  }
+
+  function addToolEntry(text) {
+    show('tool-log');
+    const el = document.createElement('div');
+    el.className = 'tool-entry';
+    el.textContent = text;
+    const container = document.getElementById('tool-entries');
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  /* ── Form submit ─────────────────────────────────────────────────── */
+  document.getElementById('analyse-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const sum = +sliders.price.value + +sliders.delivery.value + +sliders.eval.value;
+    if (sum !== 100) {
+      alert('Scoring weights must sum to 100%. Please adjust the sliders.');
+      return;
+    }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    document.getElementById('btn-text').textContent = 'Analysing…';
+    document.getElementById('btn-icon').textContent = '⏳';
+
+    resetUI();
+    show('status-bar');
+    setStatus('Connecting to SAP…');
+
+    const formData = new FormData(this);
+    formData.append('weight_price',    (sliders.price.value / 100).toFixed(2));
+    formData.append('weight_delivery', (sliders.delivery.value / 100).toFixed(2));
+    formData.append('weight_eval',     (sliders.eval.value / 100).toFixed(2));
+
+    try {
+      const response = await fetch('/analyse', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Server error');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();  // keep incomplete chunk
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const event = JSON.parse(line.slice(6));
+
+          if (event.type === 'status') {
+            setStatus(event.text);
+
+          } else if (event.type === 'tool') {
+            addToolEntry(event.text);
+            setStatus('Fetching SAP data…');
+
+          } else if (event.type === 'result') {
+            hide('status-bar');
+            show('result-box');
+            document.getElementById('result-content').innerHTML =
+              marked.parse(event.text);
+
+          } else if (event.type === 'error') {
+            hide('status-bar');
+            show('error-box');
+            document.getElementById('error-box').textContent = '⚠ ' + event.text;
+
+          } else if (event.type === 'done') {
+            btn.disabled = false;
+            document.getElementById('btn-text').textContent = 'Analyse & Recommend';
+            document.getElementById('btn-icon').textContent = '🔍';
+          }
+        }
+      }
+
+    } catch (err) {
+      hide('status-bar');
+      show('error-box');
+      document.getElementById('error-box').textContent = '⚠ ' + err.message;
+      btn.disabled = false;
+      document.getElementById('btn-text').textContent = 'Analyse & Recommend';
+      document.getElementById('btn-icon').textContent = '🔍';
+    }
+  });
+</script>
+
+</body>
+</html>
