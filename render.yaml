@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: jessica-procurement-agent
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/app.py
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: USE_MOCK_DATA
+        value: false
+      - key: SAP_BASE_URL
+        sync: false
+      - key: SAP_USER
+        sync: false
+      - key: SAP_PASSWORD
+        sync: false
+      - key: SAP_CLIENT
+        value: "100"
+      - key: DEFAULT_PURCHASING_ORG
+        value: "1010"
+      - key: WEIGHT_PRICE
+        value: "0.35"
+      - key: WEIGHT_DELIVERY
+        value: "0.30"
+      - key: WEIGHT_EVALUATION
+        value: "0.35"
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-5-20251101
