@@ -227,6 +227,10 @@
           <input type="password" id="api_key" placeholder="gsk_..." autocomplete="off" />
           <button class="toggle-key" onclick="toggleKey()">Show</button>
         </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+          <input type="checkbox" id="remember_key" style="width:auto;accent-color:var(--sap-blue);cursor:pointer;" />
+          <label for="remember_key" style="font-size:11px;text-transform:none;letter-spacing:0;color:var(--sap-muted);cursor:pointer;">Remember key in this browser</label>
+        </div>
         <p class="hint">Your key is never stored or sent anywhere except Groq</p>
       </div>
 
@@ -330,6 +334,27 @@
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+// ── API key persistence ───────────────────────────────────────────────────
+const KEY_STORAGE = 'groq_api_key';
+
+(function loadSavedKey() {
+  const saved = localStorage.getItem(KEY_STORAGE);
+  if (saved) {
+    document.getElementById('api_key').value = saved;
+    document.getElementById('remember_key').checked = true;
+  }
+})();
+
+document.getElementById('remember_key').addEventListener('change', function () {
+  if (!this.checked) localStorage.removeItem(KEY_STORAGE);
+});
+
+document.getElementById('api_key').addEventListener('input', function () {
+  if (document.getElementById('remember_key').checked && this.value) {
+    localStorage.setItem(KEY_STORAGE, this.value);
+  }
+});
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 function show(id) { document.getElementById(id).style.display = 'block'; }
 function hide(id) { document.getElementById(id).style.display = 'none'; }
@@ -414,6 +439,9 @@ async function analyse() {
   const desc   = val('description');
 
   if (!apiKey) { alert('Please enter your Groq API key.'); return; }
+  if (document.getElementById('remember_key').checked) {
+    localStorage.setItem(KEY_STORAGE, apiKey);
+  }
   if (!prNum)  { alert('Please enter a Purchase Requisition number.'); return; }
 
   const wp = +document.getElementById('w-price').value / 100;
