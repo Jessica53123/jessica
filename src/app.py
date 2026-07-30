@@ -13,6 +13,7 @@ import threading
 from flask import Flask, render_template, request, Response, stream_with_context
 
 sys.path.insert(0, os.path.dirname(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import config
 from tools import TOOL_DEFINITIONS, TOOL_FUNCTIONS
