@@ -222,12 +222,12 @@
       <h2>Analyse Purchase Requisition</h2>
 
       <div class="form-row">
-        <label for="api_key">Anthropic API Key</label>
+        <label for="api_key">Groq API Key</label>
         <div class="api-key-row">
-          <input type="password" id="api_key" placeholder="sk-ant-..." autocomplete="off" />
+          <input type="password" id="api_key" placeholder="gsk_..." autocomplete="off" />
           <button class="toggle-key" onclick="toggleKey()">Show</button>
         </div>
-        <p class="hint">Your key is never stored or sent anywhere except Anthropic</p>
+        <p class="hint">Your key is never stored or sent anywhere except Groq</p>
       </div>
 
       <div class="form-row">
@@ -413,7 +413,7 @@ async function analyse() {
   const qty    = val('quantity');
   const desc   = val('description');
 
-  if (!apiKey) { alert('Please enter your Anthropic API key.'); return; }
+  if (!apiKey) { alert('Please enter your Groq API key.'); return; }
   if (!prNum)  { alert('Please enter a Purchase Requisition number.'); return; }
 
   const wp = +document.getElementById('w-price').value / 100;
@@ -443,7 +443,7 @@ async function analyse() {
     `Scoring weights — Price: ${Math.round(wp*100)}%, Delivery: ${Math.round(wd*100)}%, Supplier Evaluation: ${Math.round(we*100)}%`,
   ].filter(Boolean).join('\n');
 
-  // Include mock SAP data in the prompt so Claude can reason over it
+  // Include mock SAP data in the prompt so the model can reason over it
   const mockDataStr = JSON.stringify(MOCK.suppliers, null, 2);
 
   const userMessage = `You are an AI procurement advisor for SAP S/4HANA app F1048A (Process Purchase Requisitions V2).
@@ -482,16 +482,14 @@ Format your response with markdown tables. Be concise and professional.`;
     addTool('score_and_rank_suppliers(weights: price=' + Math.round(wp*100) + '%, delivery=' + Math.round(wd*100) + '%, eval=' + Math.round(we*100) + '%)');
     setStatus('Generating recommendation…');
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
+        model: 'llama-3.3-70b-versatile',
         max_tokens: 2048,
         messages: [{ role: 'user', content: userMessage }],
       }),
@@ -503,7 +501,7 @@ Format your response with markdown tables. Be concise and professional.`;
     }
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || '(no response)';
+    const text = data.choices?.[0]?.message?.content || '(no response)';
 
     hide('status-bar');
     show('result-box');

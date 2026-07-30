@@ -3,12 +3,12 @@ services:
     name: jessica-procurement-agent
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python src/app.py
+    startCommand: gunicorn --chdir src app:app --bind 0.0.0.0:$PORT
     envVars:
-      - key: ANTHROPIC_API_KEY
+      - key: GROQ_API_KEY
         sync: false
       - key: USE_MOCK_DATA
-        value: false
+        value: true
       - key: SAP_BASE_URL
         sync: false
       - key: SAP_USER

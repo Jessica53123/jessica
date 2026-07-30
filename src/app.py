@@ -10,14 +10,17 @@ import os
 import queue
 import threading
 
+# Ensure src/ and repo root (for mock_data/) are always importable
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+for _p in (_HERE, _ROOT):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 from flask import Flask, render_template, request, Response, stream_with_context
-
-sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
+from groq import Groq
 import config
 from tools import TOOL_DEFINITIONS, TOOL_FUNCTIONS
-import anthropic
 
 app = Flask(__name__)
 
@@ -61,8 +64,23 @@ best source of supply for a non-catalog purchase requisition line item.
 def run_agent(pr_number: str, purchasing_org: str, event_queue: queue.Queue) -> None:
     """Run the agent loop in a background thread, pushing SSE events to the queue."""
     try:
-        client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        client = Groq(api_key=config.GROQ_API_KEY)
+
+        # Convert Anthropic-style tool definitions to OpenAI/Groq format
+        groq_tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": t["name"],
+                    "description": t["description"],
+                    "parameters": t["input_schema"],
+                },
+            }
+            for t in TOOL_DEFINITIONS
+        ]
+
         messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": (
@@ -70,45 +88,49 @@ def run_agent(pr_number: str, purchasing_org: str, event_queue: queue.Queue) -> 
                     f"(Purchasing Organisation: {purchasing_org}) and recommend "
                     f"the best source of supply for each non-catalog line item."
                 ),
-            }
+            },
         ]
 
         for iteration in range(1, config.MAX_AGENT_ITERATIONS + 1):
             event_queue.put({"type": "status", "text": f"Thinking... (step {iteration})"})
 
-            response = client.messages.create(
-                model=config.CLAUDE_MODEL,
+            response = client.chat.completions.create(
+                model=config.GROQ_MODEL,
                 max_tokens=config.MAX_TOKENS,
-                system=SYSTEM_PROMPT,
-                tools=TOOL_DEFINITIONS,
+                tools=groq_tools,
+                tool_choice="auto",
                 messages=messages,
             )
 
-            messages.append({"role": "assistant", "content": response.content})
+            msg = response.choices[0].message
+            messages.append(msg)
 
-            if response.stop_reason == "end_turn":
-                for block in response.content:
-                    if block.type == "text":
-                        event_queue.put({"type": "result", "text": block.text})
+            # Final answer — no tool calls
+            if not msg.tool_calls:
+                event_queue.put({"type": "result", "text": msg.content or "(no response)"})
                 break
 
-            if response.stop_reason == "tool_use":
-                tool_results = []
-                for block in response.content:
-                    if block.type != "tool_use":
-                        continue
-                    event_queue.put({"type": "tool", "text": f"Calling: {block.name}({json.dumps(block.input)})"})
-                    fn = TOOL_FUNCTIONS.get(block.name)
-                    try:
-                        output = fn(**block.input) if fn else {"error": f"Unknown tool: {block.name}"}
-                    except Exception as exc:
-                        output = {"error": str(exc)}
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(output, default=str),
-                    })
-                messages.append({"role": "user", "content": tool_results})
+            # Tool calls
+            for tool_call in msg.tool_calls:
+                name = tool_call.function.name
+                try:
+                    args = json.loads(tool_call.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+
+                event_queue.put({"type": "tool", "text": f"Calling: {name}({json.dumps(args)})"})
+
+                fn = TOOL_FUNCTIONS.get(name)
+                try:
+                    output = fn(**args) if fn else {"error": f"Unknown tool: {name}"}
+                except Exception as exc:
+                    output = {"error": str(exc)}
+
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": json.dumps(output, default=str),
+                })
 
     except Exception as exc:
         event_queue.put({"type": "error", "text": str(exc)})

@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---------------------------------------------------------------------------
-# Anthropic
+# Groq
 # ---------------------------------------------------------------------------
-ANTHROPIC_API_KEY: str = os.environ["ANTHROPIC_API_KEY"]
-CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-20251101")
+GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 MAX_TOKENS: int = int(os.getenv("MAX_TOKENS", "4096"))
 MAX_AGENT_ITERATIONS: int = int(os.getenv("MAX_AGENT_ITERATIONS", "15"))
 
